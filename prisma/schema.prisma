@@ -1,0 +1,60 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberStatus {
+  ONLINE
+  OFFLINE
+}
+
+model Member {
+  id            String               @id
+  password      String
+  nickname      String               @unique
+  status        MemberStatus         @default(OFFLINE)
+  joinedRooms   Room[]
+  messages      Message[]            @relation(name: "sender")
+  readHistories MessageReadHistory[]
+  createdAt     DateTime             @default(now())
+}
+
+model Room {
+  uuid          String    @id @default(uuid())
+  name          String
+  members       Member[]
+  messages      Message[] @relation(name: "room")
+  lastMessageId Int?
+  lastMessage   Message?  @relation(fields: [lastMessageId], references: [id])
+  createdAt     DateTime  @default(now())
+}
+
+model Message {
+  id            Int                  @id @default(autoincrement())
+  content       String
+  roomId        String
+  memberId      String
+  replyToId     Int?
+  room          Room                 @relation(fields: [roomId], references: [uuid], name: "room")
+  sender        Member               @relation(fields: [memberId], references: [id], name: "sender")
+  replyTo       Message?             @relation(fields: [replyToId], references: [id], name: "replyTo")
+  replies       Message[]            @relation("replyTo")
+  readHistories MessageReadHistory[]
+  lastMessageIn Room[]
+  createdAt     DateTime             @default(now())
+  editedAt      DateTime?
+}
+
+model MessageReadHistory {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  memberId  String
+  message   Message  @relation(fields: [messageId], references: [id])
+  member    Member   @relation(fields: [memberId], references: [id])
+  createdAt DateTime @default(now())
+}
